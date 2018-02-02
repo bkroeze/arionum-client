@@ -24,11 +24,10 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-var argon2 = require('argon2');
 var Promise = require('bluebird');
 var fs = require('graceful-fs');
 var prompter = require('./lib/prompter');
-var keymaster = require('./lib/keymaster');
+var wallet = require('./lib/wallet');
 
 // var openssl = require('openssl-wrapper');
 // const opensslAsync = Promise.promisify(openssl.exec);
@@ -55,7 +54,7 @@ function createCommand(args) {
   prompter.getConfirmedPassword()
     .then(confirmed => {
       pw = confirmed;
-      return keymaster.createKeys(pw);
+      return wallet.createKeys(pw);
     .then(pem => {
       console.log(pem);
     });

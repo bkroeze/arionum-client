@@ -1,6 +1,6 @@
 var EC = require('elliptic').ec
 var ec = new EC('secp256k1');
-var km = require('./lib/keymaster');
+var km = require('./lib/wallet');
 var baseX = require('base-x');
 var BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 var Base58 = baseX(BASE58);
