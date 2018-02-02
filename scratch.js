@@ -1,8 +1,44 @@
+var EC = require('elliptic').ec
+var ec = new EC('secp256k1');
 var km = require('./lib/keymaster');
-var Base64 = require('js-base64').Base64;
 var baseX = require('base-x');
 var BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 var Base58 = baseX(BASE58);
+
+var w = new km.AroWallet();
+var sig = w.sign('test');
+console.log(sig);
+console.log(w.verify('test', sig));
+console.log(w.validate());
+// var key = ec.genKeyPair();
+// console.log(key.validate());
+// console.log(key);
+// console.log('----\n\n');
+//
+
+//var hex = key.getPrivate().toJSON();
+// console.log('hex', hex);
+// // var k2 = ec.keyFromPrivate(hex);
+// // console.log(k2.validate());
+// // console.log(k2);
+// // console.log('----\n\n');
+//
+//
+// var enc = km.encodeKeypair(key);
+// console.log(enc);
+// console.log('----\n\n');
+// var dec = km.decodeKeypair(enc.encoded);
+// console.log(dec);
+// console.log('----\n\n');
+// console.log(dec.key.validate());
+// console.log(dec.key);
+
+
+
+// var w = new km.AroWallet();
+// var priv64 = km.coin2base64(w.privateKey);
+// var priKey = ec.keyFromPrivate(priv64, 'base64');
+// console.log(priKey);
 //
 // var start = "round-trip!";
 //
@@ -20,12 +56,16 @@ var Base58 = baseX(BASE58);
 // buf = Base58.decode(b58);
 // console.log(buf.toString());
 
-var w = new km.AroWallet();
-console.log('pk\n', w.privateKey, '\nencoded\n', w.encoded);
-console.log('PEM\n', w.pem);
-console.log('coin2pem\n', km.coin2pem(w.privateKey, true));
+// var w = new km.AroWallet();
+// var priv64 = km.coin2base64(w.privateKey);
+// var priKey = ec.keyFromPrivate(priv64, 'base64');
+// console.log(priKey);
+//console.log('pk\n', w.privateKey, '\nencoded\n', w.encoded);
+//console.log('PEM\n', w.pem);
+//console.log('coin2pem\n', km.coin2pem(w.privateKey, true));
 
-console.log('decode\n', km.decodeKeypair(w.encoded));
+
+//console.log('decode\n', km.decodeKeypair(w.encoded));
 //
 //
 // var buf = Buffer.from(Base58.decode(w.privateKey));

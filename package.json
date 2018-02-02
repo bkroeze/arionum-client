@@ -8,7 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "argon2": "^0.17.1",
-    "asn1": "^0.2.3",
+    "asn1.js": "^2.2.0",
     "base-x": "^3.0.4",
     "bluebird": "^3.5.1",
     "elliptic": "^6.4.0",
