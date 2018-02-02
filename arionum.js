@@ -28,9 +28,34 @@ var Promise = require('bluebird');
 var fs = require('graceful-fs');
 var prompter = require('./lib/prompter');
 var AroWallet = require('./lib/wallet').AroWallet;
+var utils = require('./lib/utils');
 
 function writeWalletFile(wallet, fname) {
-  fs.writeFileSync(wallet.getWalletFormat(), fname);
+  fs.writeFileSync(fname, wallet.getWalletFormat());
+}
+
+function walletFromFile(fname, pw) {
+  return new Promise((resolve, reject) => {
+    var aro = fs.readFileSync(fname).toString();
+    if (utils.looksEncrypted(aro) && !pw) {
+      console.log('need pass')
+      prompter.getPassword().then(entered => {
+        try {
+          var wallet = new AroWallet(aro, entered);
+          resolve(wallet);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    } else {
+      try {
+        var wallet = new AroWallet(aro, pw);
+        resolve(wallet);
+      } catch (e) {
+        reject(e);
+      }
+    }
+  });
 }
 
 const USAGE = 'Query arionum account\nUsage: arionum [command]';
@@ -46,26 +71,60 @@ function createCommand(args) {
   }
   var wallet;
   if (args.encrypt) {
-    prompter.getConfirmedPassword()
-      .then(confirmed => {
-        wallet = new AroWallet(null, confirmed);
-        writeWalletFile(wallet, args.file);
-      }
+    var password = args.password;
+    if (!password) {
+      prompter.getConfirmedPassword()
+        .then(confirmed => {
+          password = confirmed;
+          return password;
+        });
+    }
+    wallet = new AroWallet(null, password);
   } else {
     wallet = new AroWallet();
-    writeWalletFile(wallet, args.file);
   }
+  writeWalletFile(wallet, args.file);
+  console.log('Wrote wallet to: ', args.file);
+  process.exit(0);
+}
+
+function infoCommand(args) {
+  walletFromFile(args.file, args.password)
+    .then(wallet => {
+      if (!wallet) {
+        console.log('Could not load wallet', args.file);
+        process.exit(1);
+      }
+      if (!wallet.validate().result) {
+        console.log('Invalid wallet file, could not validate');
+        process.exit(1);
+      }
+      console.log('Address:', wallet.getAddress());
+      console.log('Public Key:', wallet.publicKey);
+      console.log('Private Key:', wallet.privateKey);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log('Could not decrypt wallet');
+      process.exit(1);
+    });
 }
 
 function accountOptions(yargs) {
   return yargs
-    .option('account', {alias: 'a', type: 'string', default: '0xC249736C5e126d604490F22d569F4EC453432902'})
-    .demandOption('account', 'Please provide account');
+    .option('account', {alias: 'a', type: 'string'});
 }
 
 function createOptions(yargs) {
   return yargs
     .option('encrypt', {type: 'boolean', default: true})
+    .option('password', {type: 'string', desc: 'Password for encrypted wallet, you will be prompted for it if needed and not given.'})
+    .option('file', {type: 'string', default: 'wallet.aro'});
+}
+
+function infoOptions(yargs) {
+  return yargs
+    .option('password', {type: 'string', desc: 'Password for encrypted wallet, you will be prompted for it if needed and not given.'})
     .option('file', {type: 'string', default: 'wallet.aro'});
 }
 
@@ -82,6 +141,12 @@ var args = require('yargs')
     desc: 'Create a new Arionum wallet',
     builder: createOptions,
     handler: createCommand
+  })
+  .command({
+    command: 'info',
+    desc: 'Get wallet information',
+    builder: infoOptions,
+    handler: infoCommand
   })
   .showHelpOnFail(false, 'Specify --help for available options')
   .demandCommand(1, USAGE + '\n\nI need at least one command, such as "balance"')
