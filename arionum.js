@@ -27,16 +27,11 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 var Promise = require('bluebird');
 var fs = require('graceful-fs');
 var prompter = require('./lib/prompter');
-var wallet = require('./lib/wallet');
+var AroWallet = require('./lib/wallet').AroWallet;
 
-// var openssl = require('openssl-wrapper');
-// const opensslAsync = Promise.promisify(openssl.exec);
-
-function logit(result) {
-  console.log(result.toString());
-  return result;
+function writeWalletFile(wallet, fname) {
+  fs.writeFileSync(wallet.getWalletFormat(), fname);
 }
-
 
 const USAGE = 'Query arionum account\nUsage: arionum [command]';
 
@@ -49,15 +44,17 @@ function createCommand(args) {
     console.log('I will not overwrite ' + args.file + ' please move or rename');
     process.exit(1);
   }
-  var pw;
-  var pk;
-  prompter.getConfirmedPassword()
-    .then(confirmed => {
-      pw = confirmed;
-      return wallet.createKeys(pw);
-    .then(pem => {
-      console.log(pem);
-    });
+  var wallet;
+  if (args.encrypt) {
+    prompter.getConfirmedPassword()
+      .then(confirmed => {
+        wallet = new AroWallet(null, confirmed);
+        writeWalletFile(wallet, args.file);
+      }
+  } else {
+    wallet = new AroWallet();
+    writeWalletFile(wallet, args.file);
+  }
 }
 
 function accountOptions(yargs) {

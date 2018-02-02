@@ -1,16 +1,78 @@
+var crypto = require('crypto');
 var EC = require('elliptic').ec
 var ec = new EC('secp256k1');
 var km = require('./lib/wallet');
 var baseX = require('base-x');
 var BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 var Base58 = baseX(BASE58);
+var utils = require('./lib/utils');
 
-var w = new km.AroWallet();
-console.log(w);
-console.log('----\n\n');
-var w2 = new km.AroWallet(w.encoded);
-console.log(w2);
-console.log('eq', w.equals(w2));
+// TODO:  Make round trip tests for encrypted wallets then test with php client
+//
+// function encrypt(text, password) {
+//   pw = utils.sha256(password, 'raw');
+//   var cipher = crypto.createCipheriv('aes-256-cbc', pw, iv)
+//   var crypted = cipher.update(text,'utf8','hex')
+//   crypted += cipher.final('hex');
+//   return crypted;
+// }
+//
+// function decrypt(text, password, iv) {
+//   pw = utils.sha256(password, 'raw');
+//   var decipher = crypto.createDecipheriv('aes-256-cbc', pw, iv)
+//   var dec = decipher.update(text, 'hex', 'utf8')
+//   dec += decipher.final('utf8');
+//   return dec;
+// }
+
+
+// function encryptWithIv(text, password, iv) {
+//   console.log('iv: ', iv);
+//   var pw = utils.sha256(password, 'raw');
+//   var cipher = crypto.createCipheriv('aes-256-cbc', pw, iv)
+//   var crypted = cipher.update(text, 'utf8', 'base64')
+//   crypted += cipher.final('base64');
+//   console.log('crypted: ' + crypted);
+//   var combined = Buffer.concat([iv, Buffer.from(crypted)]);
+//   return combined.toString('base64');
+// }
+//
+// function decryptWithIv(text, password) {
+//   var raw = Buffer(text, 'base64');
+//   var iv = raw.slice(0,16);
+//   console.log('iv: ', iv);
+//   var remain = raw.slice(16);
+//   console.log('remain: ', remain);
+//   var text = raw.slice(16).toString('utf8');
+//   console.log('text', text);
+//   var pw = utils.sha256(password, 'raw');
+//   var decipher = crypto.createDecipheriv('aes-256-cbc', pw, iv)
+//   var dec = decipher.update(text, 'base64', 'utf8')
+//   dec += decipher.final('utf8');
+//   return dec;
+// }
+//
+// var c = encryptWithIv('testing', 'foo', new Buffer(16));
+// console.log("result: ", decryptWithIv(c, 'foo'));
+
+// var c = encrypt('testing', 'foo');
+// console.log(c);
+// var check = decrypt(c, 'foo');
+// console.log(check);
+// console.log(check === 'testing');
+
+// var w = new km.AroWallet(null, 'test');
+// console.log(w);
+// console.log('----\n\n');
+// utils.encryptAro(w.encoded, 'test')
+//   .then(encrypted => {
+//     console.log(`cipher: ${encrypted}`);
+//     utils.decryptAro(encrypted, 'test');
+//   });
+// console.log('----\n\n');
+// var w2 = new km.AroWallet(w.encoded);
+// console.log(w2);
+// console.log('eq', w.equals(w2));
 // var sig = w.sign('test');
 // console.log(sig);
 // console.log(w.verify('test', sig));
