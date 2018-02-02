@@ -1,0 +1,24 @@
+{
+  "name": "arionum-client",
+  "version": "0.0.1",
+  "description": "A light client for Arionum chain",
+  "main": "arionum.js",
+  "repository": "https://github.com/bkroeze/arionum-client.git",
+  "author": "<bkroeze@gmail.com> Bruce Kroeze",
+  "license": "MIT",
+  "dependencies": {
+    "argon2": "^0.17.1",
+    "asn1": "^0.2.3",
+    "base-x": "^3.0.4",
+    "bluebird": "^3.5.1",
+    "elliptic": "^6.4.0",
+    "graceful-fs": "^4.1.11",
+    "key-encoder": "^1.1.6",
+    "pemtools": "^0.4.7",
+    "ramda": "^0.25.0",
+    "readline": "^1.3.0",
+    "sha512": "^0.0.1",
+    "stream": "^0.0.2",
+    "yargs": "^11.0.0"
+  }
+}
