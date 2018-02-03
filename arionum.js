@@ -220,6 +220,28 @@ function infoCommand(args) {
     });
 }
 
+function sendCommand(args) {
+  return getWallet(args)
+    .then(wallet => {
+      return client.send(wallet, args.to, args.amount, args.message);
+    })
+    .then(res => {
+      if (res.body) {
+        var results = JSON.parse(res.text);
+        if (results.status === 'ok') {
+          console.log("Transaction sent with id:", results.data);
+          process.exit(0);
+        }
+      }
+      console.log("Error sending", res.text);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log(e);
+      process.exit(1);
+    });
+}
+
 function signCommand(args) {
   getWallet(args)
     .then(wallet => {
@@ -228,6 +250,32 @@ function signCommand(args) {
     })
     .catch(e => {
       console.log('Could not decrypt wallet');
+      process.exit(1);
+    });
+}
+
+function transactionCommand(args) {
+  return client.getTransaction(args.tx)
+    .then(res => {
+      if (res.body) {
+        var results = JSON.parse(res.text);
+        if (results.status === 'ok') {
+          console.log("Transaction Details");
+          var table = new Table();
+          Object.keys(results.data).forEach(key => {
+            table.cell("Field", key);
+            table.cell("Value", results.data[key]);
+            table.newRow();
+          });
+          console.log(table.toString());
+          process.exit(0);
+        }
+      }
+      console.log("Error getting transactions", res.text);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log(e);
       process.exit(1);
     });
 }
@@ -243,11 +291,15 @@ function transactionsCommand(args) {
         var results = JSON.parse(res.text);
         if (results.status === 'ok') {
           var table = new Table();
+          console.log(results.data[0]);
           results.data.forEach(line => {
+            var date = new Date(line.date * 1000);
+            table.cell('Date', date.toLocaleDateString() + ' ' + date.toLocaleTimeString());
             table.cell('ID', line.id);
             table.cell('To', line.dst);
             table.cell('Type', line.type);
-            table.cell('Sum', line.val);
+            table.cell('Amount', line.val);
+            table.cell('Fee', line.fee);
             table.newRow();
           });
           console.log(table.toString());
@@ -297,10 +349,24 @@ function encryptOptions(yargs) {
     .option('outfile', {type: 'string', desc: 'Destination file, defaulting to stdout if not given'});
 }
 
+function sendOptions(yargs) {
+  return walletOptions(yargs)
+    .positional('amount', {type: 'number', desc: 'Amount to send'})
+    .positional('to', {type: 'string', desc: 'Destination address for funds'})
+    .option('message', {type: 'string', desc: 'Optional message to send', default: ''})
+    .demandOption(['to', 'amount'], 'Please enter the destination and amount of funds to send');
+}
+
 function signOptions(yargs) {
   return walletOptions(yargs)
     .positional('text', {desc: 'Text to sign'})
     .demandOption(['text'], 'Please provide text to sign');
+}
+
+function transactionOptions(yargs) {
+  return yargs
+    .positional('tx', {desc: 'Transaction id'})
+    .demandOption(['tx'], 'Please provide a transaction id');
 }
 
 function verifyOptions(yargs) {
@@ -313,7 +379,7 @@ function verifyOptions(yargs) {
 function walletOptions(yargs) {
   return yargs
     .option('password', {type: 'string', desc: 'Password for encrypted wallet, you will be prompted for it if needed and not given.'})
-    .option('wallet', {type: 'string', default: 'wallet.aro'});
+    .option('wallet', {type: 'string', desc: 'wallet filename', default: 'wallet.aro'});
 }
 
 var args = require('yargs')
@@ -354,10 +420,22 @@ var args = require('yargs')
     handler: infoCommand
   })
   .command({
+    command: 'send <amount> <to>',
+    desc: 'Send funds',
+    builder: sendOptions,
+    handler: sendCommand
+  })
+  .command({
     command: 'sign <text>',
     desc: 'Sign text',
     builder: signOptions,
     handler: signCommand
+  })
+  .command({
+    command: 'transaction <tx>',
+    desc: 'Get details for a transaction',
+    builder: transactionOptions,
+    handler: transactionCommand
   })
   .command({
     command: 'transactions',
