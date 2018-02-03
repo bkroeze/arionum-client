@@ -4,5 +4,4 @@ node_modules
 *config*
 dist
 yarn.lock
-wallet.aro
-wallet.*aro
+*.aro

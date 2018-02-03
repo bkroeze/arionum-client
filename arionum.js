@@ -30,32 +30,45 @@ var prompter = require('./lib/prompter');
 var AroWallet = require('./lib/wallet').AroWallet;
 var utils = require('./lib/utils');
 
-function writeWalletFile(wallet, fname) {
-  fs.writeFileSync(fname, wallet.getWalletFormat());
+function writeWalletFile(wallet, fname, pw) {
+  return wallet.getWalletFormat(pw)
+    .then(aro => {
+      fs.writeFileSync(fname, aro);
+      return true;
+    });
+}
+
+function getWallet(args) {
+  return walletFromFile(args.file, args.password)
+    .then(wallet => {
+      if (!wallet) {
+        console.log('Could not load wallet', args.file);
+        throw new Error('Wallet load error');
+      }
+      if (!wallet.validate().result) {
+        console.log('Invalid wallet file, could not validate');
+        throw new Error('Wallet validation error');
+      }
+      return wallet;
+    });
 }
 
 function walletFromFile(fname, pw) {
-  return new Promise((resolve, reject) => {
-    var aro = fs.readFileSync(fname).toString();
-    if (utils.looksEncrypted(aro) && !pw) {
-      console.log('need pass')
-      prompter.getPassword().then(entered => {
-        try {
-          var wallet = new AroWallet(aro, entered);
-          resolve(wallet);
-        } catch (e) {
-          reject(e);
-        }
+  var aro = fs.readFileSync(fname).toString();
+  if (utils.looksEncrypted(aro)) {
+    return prompter.getPassword(pw, 'Please enter the password for this encrypted wallet')
+      .then(entered => {
+        return new AroWallet(aro, entered);
       });
-    } else {
+  } else {
+    return new Promise((resolve, reject) => {
       try {
-        var wallet = new AroWallet(aro, pw);
-        resolve(wallet);
+        resolve(new AroWallet(aro));
       } catch (e) {
         reject(e);
       }
-    }
-  });
+    });
+  }
 }
 
 const USAGE = 'Query arionum account\nUsage: arionum [command]';
@@ -71,37 +84,89 @@ function createCommand(args) {
   }
   var wallet;
   if (args.encrypt) {
-    var password = args.password;
-    if (!password) {
-      prompter.getConfirmedPassword()
-        .then(confirmed => {
-          password = confirmed;
-          return password;
-        });
-    }
-    wallet = new AroWallet(null, password);
+    var password = prompter.getConfirmedPassword(args.password)
+      .then(password => {
+        wallet = new AroWallet(null, password);
+        writeWalletFile(wallet, args.file, password)
+          .then(() => {
+            console.log('Wrote encrypted wallet to: ', args.file);
+            process.exit(0);
+          });
+      });
   } else {
     wallet = new AroWallet();
+    writeWalletFile(wallet, args.file, null)
+      .then(() => {
+        console.log('Wrote wallet to: ', args.file);
+        process.exit(0);
+      });
   }
-  writeWalletFile(wallet, args.file);
-  console.log('Wrote wallet to: ', args.file);
-  process.exit(0);
+}
+
+function encryptCommand(args) {
+  var currWallet;
+  getWallet(args)
+    .then(wallet => {
+      currWallet = wallet;
+      return prompter.getConfirmedPassword(args.newpassword, 'Please enter the new password for the wallet');
+    })
+    .then(password => {
+      var encWallet = new AroWallet(currWallet.encoded, password);
+      if (args.outfile) {
+        writeWalletFile(encWallet, args.outfile, password)
+          .then(() => {
+            console.log('Wrote encrypted wallet to: ', args.outfile);
+            process.exit(0);
+          });
+
+      } else {
+        encWallet.getWalletFormat(password)
+          .then(aro => {
+            console.log(aro);
+            process.exit(0);
+          });
+      }
+    })
+    .catch(e => {
+      console.log('Could not decrypt wallet', e);
+      process.exit(1);
+    });
 }
 
 function infoCommand(args) {
-  walletFromFile(args.file, args.password)
+  getWallet(args)
     .then(wallet => {
-      if (!wallet) {
-        console.log('Could not load wallet', args.file);
-        process.exit(1);
-      }
-      if (!wallet.validate().result) {
-        console.log('Invalid wallet file, could not validate');
-        process.exit(1);
-      }
       console.log('Address:', wallet.getAddress());
       console.log('Public Key:', wallet.publicKey);
       console.log('Private Key:', wallet.privateKey);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log('Could not decrypt wallet');
+      process.exit(1);
+    });
+}
+
+function signCommand(args) {
+  getWallet(args)
+    .then(wallet => {
+      console.log(wallet.sign(args.text));
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log('Could not decrypt wallet');
+      process.exit(1);
+    });
+}
+
+function verifyCommand(args) {
+  getWallet(args)
+    .then(wallet => {
+      if (wallet.verify(args.text, args.signature)) {
+        console.log('Signature valid');
+      } else {
+        console.log('Bad Signature');
+      }
       process.exit(0);
     })
     .catch(e => {
@@ -119,10 +184,29 @@ function createOptions(yargs) {
   return yargs
     .option('encrypt', {type: 'boolean', default: true})
     .option('password', {type: 'string', desc: 'Password for encrypted wallet, you will be prompted for it if needed and not given.'})
-    .option('file', {type: 'string', default: 'wallet.aro'});
+    .option('wallet', {type: 'string', default: 'wallet.aro'});
 }
 
-function infoOptions(yargs) {
+function encryptOptions(yargs) {
+  return walletOptions(yargs)
+    .option('newpassword', {type: 'string', desc: 'Password for newly encrypted wallet, you will be prompted for it if not given.'})
+    .option('outfile', {type: 'string', desc: 'Destination file, defaulting to stdout if not given'});
+}
+
+function signOptions(yargs) {
+  return walletOptions(yargs)
+    .positional('text', {desc: 'Text to sign'})
+    .demandOption(['text'], 'Please provide text to sign');
+}
+
+function verifyOptions(yargs) {
+  return walletOptions(yargs)
+    .positional('text', {desc: 'Text to sign'})
+    .positional('signature', {desc: 'Signature to verify'})
+    .demandOption(['text', 'signature'], 'Please provide both text to verify and a signature');
+}
+
+function walletOptions(yargs) {
   return yargs
     .option('password', {type: 'string', desc: 'Password for encrypted wallet, you will be prompted for it if needed and not given.'})
     .option('file', {type: 'string', default: 'wallet.aro'});
@@ -143,10 +227,28 @@ var args = require('yargs')
     handler: createCommand
   })
   .command({
+    command: 'encrypt',
+    desc: 'Encrypt the wallet with a password',
+    builder: encryptOptions,
+    handler: encryptCommand
+  })
+  .command({
     command: 'info',
     desc: 'Get wallet information',
-    builder: infoOptions,
+    builder: walletOptions,
     handler: infoCommand
+  })
+  .command({
+    command: 'sign <text>',
+    desc: 'Sign text',
+    builder: signOptions,
+    handler: signCommand
+  })
+  .command({
+    command: 'verify <text> <signature>',
+    desc: 'Verify a signature',
+    builder: verifyOptions,
+    handler: verifyCommand
   })
   .showHelpOnFail(false, 'Specify --help for available options')
   .demandCommand(1, USAGE + '\n\nI need at least one command, such as "balance"')
