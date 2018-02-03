@@ -26,9 +26,12 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 
 var Promise = require('bluebird');
 var fs = require('graceful-fs');
+var Table = require('easy-table');
+
 var prompter = require('./lib/prompter');
 var AroWallet = require('./lib/wallet').AroWallet;
 var utils = require('./lib/utils');
+var client = require('./lib/client');
 
 function noOverwrites(fname) {
   if (fname && fs.existsSync(fname)) {
@@ -81,7 +84,51 @@ function walletFromFile(fname, pw) {
 const USAGE = 'Query arionum account\nUsage: arionum [command]';
 
 function balanceCommand(args) {
-  console.log('Not yet implemented');
+  getWallet(args)
+    .then(wallet => {
+      return client.getBalance(wallet.getAddress());
+    })
+    .then(res => {
+      if (res.body) {
+        var results = JSON.parse(res.text);
+        if (results.status === 'ok') {
+          console.log("Balance: ", results.data);
+          process.exit(0);
+        }
+      }
+      console.log("Error getting balance", res.text);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log(e);
+      process.exit(1);
+    });
+}
+
+function blockCommand(args) {
+  return client.getCurrentBlock()
+    .then(res => {
+      if (res.body) {
+        var results = JSON.parse(res.text);
+        if (results.status === 'ok') {
+          console.log("Block Information");
+          var table = new Table();
+          Object.keys(results.data).forEach(key => {
+            table.cell("Field", key);
+            table.cell("Value", results.data[key]);
+            table.newRow();
+          });
+          console.log(table.toString());
+          process.exit(0);
+        }
+      }
+      console.log("Error getting block data", res.text);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log(e);
+      process.exit(1);
+    });
 }
 
 function createCommand(args) {
@@ -185,6 +232,37 @@ function signCommand(args) {
     });
 }
 
+
+function transactionsCommand(args) {
+  getWallet(args)
+    .then(wallet => {
+      return client.getTransactions(wallet.getAddress());
+    })
+    .then(res => {
+      if (res.body) {
+        var results = JSON.parse(res.text);
+        if (results.status === 'ok') {
+          var table = new Table();
+          results.data.forEach(line => {
+            table.cell('ID', line.id);
+            table.cell('To', line.dst);
+            table.cell('Type', line.type);
+            table.cell('Sum', line.val);
+            table.newRow();
+          });
+          console.log(table.toString());
+          process.exit(0);
+        }
+      }
+      console.log("Error getting transactions", res.text);
+      process.exit(0);
+    })
+    .catch(e => {
+      console.log(e);
+      process.exit(1);
+    });
+}
+
 function verifyCommand(args) {
   getWallet(args)
     .then(wallet => {
@@ -199,11 +277,6 @@ function verifyCommand(args) {
       console.log('Could not decrypt wallet');
       process.exit(1);
     });
-}
-
-function accountOptions(yargs) {
-  return yargs
-    .option('account', {alias: 'a', type: 'string'});
 }
 
 function createOptions(yargs) {
@@ -240,7 +313,7 @@ function verifyOptions(yargs) {
 function walletOptions(yargs) {
   return yargs
     .option('password', {type: 'string', desc: 'Password for encrypted wallet, you will be prompted for it if needed and not given.'})
-    .option('file', {type: 'string', default: 'wallet.aro'});
+    .option('wallet', {type: 'string', default: 'wallet.aro'});
 }
 
 var args = require('yargs')
@@ -248,8 +321,13 @@ var args = require('yargs')
   .command({
     command: 'balance',
     desc: 'Get balance for Arionum account',
-    builder: accountOptions,
+    builder: walletOptions,
     handler: balanceCommand
+  })
+  .command({
+    command: 'block',
+    desc: 'Get current block data',
+    handler: blockCommand
   })
   .command({
     command: 'create',
@@ -280,6 +358,12 @@ var args = require('yargs')
     desc: 'Sign text',
     builder: signOptions,
     handler: signCommand
+  })
+  .command({
+    command: 'transactions',
+    desc: 'Get transactions for Arionum account',
+    builder: walletOptions,
+    handler: transactionsCommand
   })
   .command({
     command: 'verify <text> <signature>',
