@@ -30,6 +30,13 @@ var prompter = require('./lib/prompter');
 var AroWallet = require('./lib/wallet').AroWallet;
 var utils = require('./lib/utils');
 
+function noOverwrites(fname) {
+  if (fname && fs.existsSync(fname)) {
+    console.log(`I will not overwrite "${fname}", please remove it before trying again`);
+    process.exit(1);
+  }
+}
+
 function writeWalletFile(wallet, fname, pw) {
   return wallet.getWalletFormat(pw)
     .then(aro => {
@@ -39,10 +46,10 @@ function writeWalletFile(wallet, fname, pw) {
 }
 
 function getWallet(args) {
-  return walletFromFile(args.file, args.password)
+  return walletFromFile(args.wallet, args.password)
     .then(wallet => {
       if (!wallet) {
-        console.log('Could not load wallet', args.file);
+        console.log('Could not load wallet', args.wallet);
         throw new Error('Wallet load error');
       }
       if (!wallet.validate().result) {
@@ -78,32 +85,52 @@ function balanceCommand(args) {
 }
 
 function createCommand(args) {
-  if (fs.existsSync(args.file)) {
-    console.log('I will not overwrite ' + args.file + ' please move or rename');
-    process.exit(1);
-  }
+  noOverwrites(args.wallet);
   var wallet;
   if (args.encrypt) {
     var password = prompter.getConfirmedPassword(args.password)
       .then(password => {
         wallet = new AroWallet(null, password);
-        writeWalletFile(wallet, args.file, password)
+        writeWalletFile(wallet, args.wallet, password)
           .then(() => {
-            console.log('Wrote encrypted wallet to: ', args.file);
+            console.log('Wrote encrypted wallet to: ', args.wallet);
             process.exit(0);
           });
       });
   } else {
     wallet = new AroWallet();
-    writeWalletFile(wallet, args.file, null)
+    writeWalletFile(wallet, args.wallet, null)
       .then(() => {
-        console.log('Wrote wallet to: ', args.file);
+        console.log('Wrote wallet to: ', args.wallet);
         process.exit(0);
       });
   }
 }
 
+function decryptCommand(args) {
+  noOverwrites(args.outfile);
+  getWallet(args)
+    .then(wallet => {
+      if (args.outfile) {
+        var decWallet = new AroWallet(wallet.encoded, null);
+        writeWalletFile(decWallet, args.outfile, null)
+          .then(() => {
+            console.log('Wrote plaintext wallet to: ', args.outfile);
+            process.exit(0);
+          });
+      } else {
+        console.log(wallet.encoded);
+        process.exit(0);
+      }
+    })
+    .catch(e => {
+      console.log('Could not decrypt wallet', e);
+      process.exit(1);
+    });
+}
+
 function encryptCommand(args) {
+  noOverwrites(args.outfile);
   var currWallet;
   getWallet(args)
     .then(wallet => {
@@ -118,7 +145,6 @@ function encryptCommand(args) {
             console.log('Wrote encrypted wallet to: ', args.outfile);
             process.exit(0);
           });
-
       } else {
         encWallet.getWalletFormat(password)
           .then(aro => {
@@ -187,6 +213,11 @@ function createOptions(yargs) {
     .option('wallet', {type: 'string', default: 'wallet.aro'});
 }
 
+function decryptOptions(yargs) {
+  return walletOptions(yargs)
+    .option('outfile', {type: 'string', desc: 'Destination file, defaulting to stdout if not given'});
+}
+
 function encryptOptions(yargs) {
   return walletOptions(yargs)
     .option('newpassword', {type: 'string', desc: 'Password for newly encrypted wallet, you will be prompted for it if not given.'})
@@ -227,8 +258,14 @@ var args = require('yargs')
     handler: createCommand
   })
   .command({
+    command: 'decrypt',
+    desc: 'Decrypt the wallet and optionally write unencrypted wallet file',
+    builder: decryptOptions,
+    handler: decryptCommand
+  })
+  .command({
     command: 'encrypt',
-    desc: 'Encrypt the wallet with a password',
+    desc: 'Encrypt the wallet with a password and optionally write to new wallet file',
     builder: encryptOptions,
     handler: encryptCommand
   })
