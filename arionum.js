@@ -317,6 +317,10 @@ function transactionsCommand(args) {
 
 function verifyCommand(args) {
   getWallet(args)
+    .catch(e => {
+      console.log('Could not decrypt wallet');
+      process.exit(1);
+    })
     .then(wallet => {
       if (wallet.verify(args.text, args.signature)) {
         console.log('Signature valid');
@@ -324,12 +328,9 @@ function verifyCommand(args) {
         console.log('Bad Signature');
       }
       process.exit(0);
-    })
-    .catch(e => {
-      console.log('Could not decrypt wallet');
-      process.exit(1);
     });
 }
+
 
 function createOptions(yargs) {
   return yargs
