@@ -1,8 +1,8 @@
 TODO
 ----
 
-* Add Send Command
 * allow balance and transactions command to accept an account arg instead of reading wallet
+* add "sendall" command
 * normalize paths such as ~
 * Add JSDoc comments
 * Document it
