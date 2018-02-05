@@ -8,3 +8,8 @@ Calling Arionum peer: http://185.206.147.102
 sig AN1rKvtdX1Jx1ADBCYn6nKMM2eBHirqXw38WzjJeTp[REDACTED]
 Calling Arionum peer: http://185.205.209.78
 Transaction sent with id: 4TdMj39QoDTN9mLcjeN9UqG7B2d2LSAQNjBzrQ9qiqEdca8u7tX7VCN8F4JPqN7pCxvZV4hx2xt6H2Zi76GaLtpP
+
+Balance received on that wallet with this:
+bruce@Sylph ~/work/arionum/arionum-client $ ./arionum.js balance --wallet=wallet.test.aro
+Calling Arionum peer: http://185.206.146.108
+Balance:  1.00000000
