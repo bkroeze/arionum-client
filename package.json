@@ -1,6 +1,6 @@
 {
   "name": "arionum-client",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A light client for Arionum chain",
   "main": "arionum.js",
   "repository": "https://github.com/bkroeze/arionum-client.git",

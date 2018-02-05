@@ -5,6 +5,6 @@ TODO
 * add "sendall" command
 * normalize paths such as ~
 * Add JSDoc comments
-* Document it
+* Document it in README
 * Add polling for balances
 * Add csv and JSON output for commands such as transactions
