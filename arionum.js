@@ -206,6 +206,11 @@ function encryptCommand(args) {
     });
 }
 
+function feeCommand(args) {
+  console.log(client.getFee(args.amount));
+  process.exit(0);
+}
+
 function infoCommand(args) {
   getWallet(args)
     .then(wallet => {
@@ -350,6 +355,12 @@ function encryptOptions(yargs) {
     .option('outfile', {type: 'string', desc: 'Destination file, defaulting to stdout if not given'});
 }
 
+function feeOptions(yargs) {
+  return yargs
+    .positional('amount', {type: 'number', desc: 'Amount to send'})
+    .demandOption(['amount'], 'Please enter the amount to use to check the fee.')
+}
+
 function sendOptions(yargs) {
   return walletOptions(yargs)
     .positional('amount', {type: 'number', desc: 'Amount to send'})
@@ -413,6 +424,12 @@ var args = require('yargs')
     desc: 'Encrypt the wallet with a password and optionally write to new wallet file',
     builder: encryptOptions,
     handler: encryptCommand
+  })
+  .command({
+    command: 'fee <amount>',
+    desc: 'Calculate the fee for a transaction',
+    builder: feeOptions,
+    handler: feeCommand
   })
   .command({
     command: 'info',
